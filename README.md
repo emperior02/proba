@@ -249,12 +249,4 @@ Grafana
 
 ---
 
-# ✅ Возможные улучшения
 
-* Dashboard для всех серверов
-* Аналитика HTTP статусов
-* Top IP клиентов
-* Мониторинг ошибок 5xx
-* Alerting (Telegram / Email)
-* Анализ нагрузки NGINX
-# proba
