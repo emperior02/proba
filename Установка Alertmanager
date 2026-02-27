@@ -1,0 +1,150 @@
+🧾 PROMETHEUS ALERTMANAGER
+✅ Полная установка и настройка (Ubuntu)
+✅ 1. Установка Alertmanager (OFFICIAL)
+cd /opt
+
+sudo wget https://github.com/prometheus/alertmanager/releases/download/v0.31.1/alertmanager-0.31.1.linux-amd64.tar.gz
+
+sudo tar -xvzf alertmanager-0.31.1.linux-amd64.tar.gz
+sudo mv alertmanager-0.31.1.linux-amd64 alertmanager
+✅ 2. Установка бинарников
+sudo cp /opt/alertmanager/alertmanager /usr/local/bin/
+sudo cp /opt/alertmanager/amtool /usr/local/bin/
+
+Проверка:
+
+alertmanager --version
+✅ 3. Пользователь сервиса
+sudo useradd --no-create-home --shell /bin/false alertmanager
+✅ 4. Каталоги
+sudo mkdir /etc/alertmanager
+sudo mkdir /var/lib/alertmanager
+✅ 5. Конфигурация Alertmanager
+sudo nano /etc/alertmanager/alertmanager.yml
+Минимальный WORKING CONFIG
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+
+receivers:
+- name: default
+Проверка YAML
+amtool check-config /etc/alertmanager/alertmanager.yml
+
+✅ должно быть:
+
+SUCCESS
+✅ 6. Права доступа
+sudo chown -R alertmanager:alertmanager /etc/alertmanager
+sudo chown -R alertmanager:alertmanager /var/lib/alertmanager
+✅ 7. Systemd service
+sudo nano /etc/systemd/system/alertmanager.service
+✅ Production service
+[Unit]
+Description=Alertmanager
+After=network.target
+
+[Service]
+User=alertmanager
+Group=alertmanager
+Type=simple
+ExecStart=/usr/local/bin/alertmanager \
+--config.file=/etc/alertmanager/alertmanager.yml \
+--storage.path=/var/lib/alertmanager \
+--web.listen-address=:9093 \
+--cluster.listen-address=:9095
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+✅ 8. Запуск
+sudo systemctl daemon-reload
+sudo systemctl enable alertmanager
+sudo systemctl start alertmanager
+✅ 9. Проверка
+systemctl status alertmanager
+
+должно быть:
+
+Active: active (running)
+
+Порты:
+
+ss -tulpn | grep alert
+9093 → Web UI
+9095 → Cluster
+✅ 10. Web UI
+http://SERVER_IP:9093
+🚨 11. Подключение к Prometheus
+
+Открыть:
+
+sudo nano /etc/prometheus/prometheus.yml
+
+Добавить:
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093
+
+Перезапуск:
+
+sudo systemctl restart prometheus
+🚨 12. Alert Rules (пример)
+sudo nano /etc/prometheus/alerts.yml
+NGINX DOWN ALERT
+groups:
+- name: nginx-alerts
+  rules:
+
+  - alert: NginxDown
+    expr: up{job="nginx"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "NGINX DOWN"
+      description: "Instance {{ $labels.instance }} is DOWN"
+
+Добавить в prometheus.yml:
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+Restart:
+
+sudo systemctl restart prometheus
+✅ 13. Проверка Alert
+
+Открыть:
+
+http://SERVER_IP:9090/alerts
+
+Остановить nginx:
+
+sudo systemctl stop nginx
+
+Через ~1 минуту:
+
+✅ ALERT FIRING
+
+🚨 ЧАСТЫЕ ПРОБЛЕМЫ (🔥 важно)
+❌ порт занят
+sudo lsof -i :9093
+sudo lsof -i :9094
+❌ старый alertmanager
+sudo systemctl stop prometheus-alertmanager
+sudo systemctl disable prometheus-alertmanager
+sudo pkill alertmanager
+❌ permission denied
+sudo chown -R alertmanager:alertmanager /var/lib/alertmanager
+✅ Итоговая схема
+Prometheus    :9090
+Alertmanager  :9093
+Cluster       :9095
+Grafana       :3000
