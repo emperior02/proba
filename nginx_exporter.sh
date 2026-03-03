@@ -1,3 +1,7 @@
+# КАК ИСПОЛЗОВАТЬ
+# chmod +x nginx_exporter.sh
+# sudo ./nginx_exporter.sh
+# ==============================
 #!/bin/bash
 
 set -e
